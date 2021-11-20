@@ -16,6 +16,8 @@ class Request:
 
     def __lt__(self, b):
         return self.floor < b.floor
+    def __repr__(self):
+        return f"Request({self.floor}, {self.dir})"
 
 
 # 请求队列插入
