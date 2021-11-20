@@ -3,6 +3,8 @@
 """
 
 """
+
+
 class Strategy:
     """
 输入 `info` 格式: dict
@@ -53,51 +55,61 @@ info["say"] -> "success" #表示执行成功， 有额外值`last command`和`re
 input information `error`  常见错误描述
 info["error"] -> "unknow command"
     """
-    def loop_call(self, info:dict) -> dict:
+
+    def loop_call(self, info: dict) -> dict:
         '''每次循环时被调用，注意执行速度。
         '''
-        #TODO : your code
-    def elevator_arrive_call(self, info:dict) -> dict:
+        # TODO : your code
+
+    def elevator_arrive_call(self, info: dict) -> dict:
         '''当电梯到达时执行， info 有额外值`arrive elevator`，该值不会更新
 其类型为list,“到达的电梯”的序号、所在楼层、上次停靠楼层、每个乘客目标元组
          #example -> [(1, 1, (2, 3, 4)), (2, 1, (2, 5)), (3, 4, ()), ...]
     在`loop_call`之前执行。
         '''
-        #TODO : your code
-    
+        # TODO : your code
+
 
 class FastCmds:
-    Bye = {"cmd" : "bye"}
+    Bye = {"cmd": "bye"}
+
     @classmethod
-    def elevator_to(cls, N:int, F:int):
+    def elevator_to(cls, N: int, F: int):
         "指示电梯 N（从0开始数） 至 楼层 F（从1开始数） 。"
-        return {"cmd":"elevator to", "N":N, "F":F}
+        return {"cmd": "elevator to", "N": N, "F": F}
+
     @classmethod
     def said_routine(cls, info):
         return info["say"] == "routine"
+
     @classmethod
-    def elevator_up(cls, N:int):
+    def elevator_up(cls, N: int):
         "指示电梯 N 向上。"
-        return {"cmd":"elevator up", "N": N}
+        return {"cmd": "elevator up", "N": N}
+
     @classmethod
-    def elevator_down(cls, N:int):
+    def elevator_down(cls, N: int):
         "指示电梯 N 向下。"
-        return {"cmd":"elevator down", "N": N}
+        return {"cmd": "elevator down", "N": N}
+
     @classmethod
     def success_updown(cls, info):
         "命令执行成功 且 上一个命令为`elevator_up`或`elevator_down`。"
-        return (info["say"]=="success") and (
-            info["last command"]["cmd"] in ("elevator up", "elevator down"))
+        return (info["say"] == "success") and (
+                info["last command"]["cmd"] in ("elevator up", "elevator down"))
+
     @classmethod
     def last_down(cls, info):
         "上一个命令为`elevator_down`。"
         return "last command" in info and \
-            info["last command"]["cmd"] == "elevator down"
+               info["last command"]["cmd"] == "elevator down"
+
     @classmethod
     def last_up(cls, info):
         "上一个命令为`elevator_up`。"
         return "last command" in info and \
-            info["last command"]["cmd"] == "elevator up"
+               info["last command"]["cmd"] == "elevator up"
+
 
 cmds = FastCmds()
 

@@ -3,6 +3,8 @@
 """
 
 """
+
+
 class Strategy:
     """
 输入 `info` 格式: dict
@@ -53,22 +55,23 @@ info["say"] -> "success" #表示执行成功， 有额外值`last command`和`re
 input information `error`  常见错误描述
 info["error"] -> "unknow command"
     """
-    def loop_call(self, info:dict) -> dict:
+
+    def loop_call(self, info: dict) -> dict:
         '''每次循环时被调用，注意执行速度。
         '''
         to_go_floor = [floor for floor, v in info["passenger"].items() if v]
-        free_elevators = [(idx,i[0]) for idx,i in enumerate(info["elevator"])
+        free_elevators = [(idx, i[0]) for idx, i in enumerate(info["elevator"])
                           if i[1] is None]
-        #因为此函数在`elevator_arrive_call`后面执行，如果电梯内有乘客，
-        #`elevator_arrive_call`会指派电梯。故此判断空闲方法合理。
+        # 因为此函数在`elevator_arrive_call`后面执行，如果电梯内有乘客，
+        # `elevator_arrive_call`会指派电梯。故此判断空闲方法合理。
         if not (to_go_floor and free_elevators):
             return {"cmd": "bye"}
-        #有想乘梯的乘客 且 有闲置的电梯
+        # 有想乘梯的乘客 且 有闲置的电梯
         floor = max(to_go_floor)
-        elevator = min(free_elevators, key=lambda x:abs(x[1]-floor))[0]
-        return {"cmd": "elevator to", "N":elevator, "F":floor}
-        
-    def elevator_arrive_call(self, info:dict) -> dict:
+        elevator = min(free_elevators, key=lambda x: abs(x[1] - floor))[0]
+        return {"cmd": "elevator to", "N": elevator, "F": floor}
+
+    def elevator_arrive_call(self, info: dict) -> dict:
         '''当电梯到达时执行， info 有额外值`arrive elevator`，该值不会更新
 其类型为list, “到达的电梯”的序号、所在楼层、上次停靠楼层、每个乘客目标元组
          #example -> [(1, 1, (2, 3, 4)), (2, 1, (2, 5)), (3, 4, ()), ...]
@@ -78,7 +81,7 @@ info["error"] -> "unknow command"
             self.arrive_elevator = info["arrive elevator"]
             index, floor, _, inside = self.arrive_elevator.pop()
             if inside:
-                #优先考虑电梯内的乘客
+                # 优先考虑电梯内的乘客
                 if max(inside) > floor:
                     return {"cmd": "elevator up", "N": index}
                 else:
@@ -90,7 +93,7 @@ info["error"] -> "unknow command"
                         info["cmd"] = "routine"
                         return self.elevator_arrive_call(info)
                     else:
-                        return {"cmd" : "bye"}
+                        return {"cmd": "bye"}
                 if max(passengers) > floor:
                     return {"cmd": "elevator up", "N": index}
                 else:
@@ -102,17 +105,17 @@ info["error"] -> "unknow command"
             is_up = last["cmd"].endswith("up")
             if is_up:
                 floor = min(info["return"])
-                return {"cmd":"elevator to", "N":index, "F":floor}
+                return {"cmd": "elevator to", "N": index, "F": floor}
             else:
                 floor = max(info["return"])
-                return {"cmd":"elevator to", "N":index, "F":floor}
+                return {"cmd": "elevator to", "N": index, "F": floor}
         elif info["say"] == "success" and \
                 info["last command"]["cmd"] == "elevator to":
             if not self.arrive_elevator:
                 return {"cmd": "bye"}
             index, floor, _, inside = self.arrive_elevator.pop()
             if inside:
-                #优先考虑电梯内的乘客
+                # 优先考虑电梯内的乘客
                 if max(inside) > floor:
                     return {"cmd": "elevator up", "N": index}
                 else:
@@ -124,12 +127,13 @@ info["error"] -> "unknow command"
                         info["cmd"] = "routine"
                         return self.elevator_arrive_call(info)
                     else:
-                        return {"cmd" : "bye"}
+                        return {"cmd": "bye"}
                 if max(passengers) > floor:
                     return {"cmd": "elevator up", "N": index}
                 else:
                     return {"cmd": "elevator down", "N": index}
         else:
             raise Exception(info)
+
 
 strategy = Strategy()
