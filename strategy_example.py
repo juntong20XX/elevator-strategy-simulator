@@ -77,6 +77,8 @@ info["error"] -> "unknow command"
          #example -> [(1, 1, (2, 3, 4)), (2, 1, (2, 5)), (3, 4, ()), ...]
     在`loop_call`之前执行。
         '''
+        print(info["arrive elevator"][0])
+        print(info["elevator"][0])
         if info["say"] == "routine":
             self.arrive_elevator = info["arrive elevator"]
             index, floor, _, inside = self.arrive_elevator.pop()

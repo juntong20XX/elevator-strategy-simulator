@@ -631,7 +631,7 @@ class Elevator:
         show_frame.pack(fill="x", side="top", pady=5)
         top_frame.pack(fill="x", side="top")
         self.user_label.pack(fill="both", side="top")
-        self.passenger_frame.pack(side="bottom", fill="y")
+        # self.passenger_frame.pack(side="bottom", fill="y")
 
     @property
     def moving_direction(self):
@@ -647,7 +647,6 @@ class Elevator:
         """下客。
 执行此方法会 删除电梯内前往所在楼层的乘客，并将`floor_from`定为当前楼层，并刷新UI
            但不会更改`floor_to`。"""
-        self.floor_from = self.at_floor
         while 1:
             try:
                 self.inside_people.remove(self.at_floor)
@@ -745,7 +744,6 @@ class Worker:
         for p in self.simu.floor_passengers.values():
             if elevator_stopped and hasattr(p, "call_elevators_stop"):
                 p.call_elevators_stop(elevator_stopped)
-            print(p.my_floor, hasattr(p, "call_loop"))
             if hasattr(p, "call_loop"):
                 p.call_loop()
 
@@ -786,7 +784,7 @@ class Worker:
             e = self.simu.elevators[index]
             e.floor_to = to_floor
             e.start = this_loop_time
-            # e.floor_from = e.at_floor #`floor_from`在下客时被赋值
+            e.floor_from = e.at_floor
             e.flush_ui()
             return {"say": "success", "return": tuple(e.inside_people),
                     "last command": msg}
@@ -835,6 +833,8 @@ class Worker:
             index = msg["N"]
             data = msg["data"]
             self.simu.elevators[index].user_label.config(**data)
+            return {"say": "success", "return": None,
+                    "last command": msg}
         else:
             return {"say": "error", "error": "unknow command",
                     "last command": msg}

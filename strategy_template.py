@@ -64,7 +64,7 @@ info["error"] -> "unknow command"
     def elevator_arrive_call(self, info: dict) -> dict:
         '''当电梯到达时执行， info 有额外值`arrive elevator`，该值不会更新
 其类型为list,“到达的电梯”的序号、所在楼层、上次停靠楼层、每个乘客目标元组
-         #example -> [(1, 1, (2, 3, 4)), (2, 1, (2, 5)), (3, 4, ()), ...]
+         #example -> [(0, 1, 1, (2, 3, 4)), (1, 2, 1, (2, 5)), (4, 3, 4, ()), ...]
     在`loop_call`之前执行。
         '''
         # TODO : your code

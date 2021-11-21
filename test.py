@@ -16,8 +16,13 @@ class Request:
 
     def __lt__(self, b):
         return self.floor < b.floor
+    
     def __repr__(self):
         return f"Request({self.floor}, {self.dir})"
+    
+    def __eq__(self, o):
+        return isinstance(o, Request) and \
+            o.floor==self.floor and o.dir==self.dir
 
 
 # 请求队列插入
