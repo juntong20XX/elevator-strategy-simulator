@@ -8,7 +8,7 @@ Created on Sun Nov 14 22:32:30 2021
 注意：
 保存环境时不仅会覆盖文件，乘客组也无法保存。
 """
-import tkinter as tk, os, random, functools, time, sys
+import tkinter as tk, tkinter.messagebox, os, random, functools, time, sys
 from copy import copy
 from threading import Thread
 
@@ -559,7 +559,7 @@ go_down_number  : int/None   生成向下乘客的人数
             while 1:
                 flo = random.randint(a, b)
                 if flo not in avoid_floors:
-                    ls.append(flo);
+                    ls.append(flo)
                     break
 
         if my_floor == hi:
