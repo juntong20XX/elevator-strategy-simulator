@@ -339,7 +339,8 @@ class Simulation:
             self._env_info_list.insert("end", text)
 
     def _get_env_info_text(self, floor):
-        group = self.floor_passengers[floor]
+        group = self.floor_passengers.get(floor,
+                                          self.passengers_groups["nobody"])
         text = f"F{floor}".ljust(5)
         up = sum(i > floor for i in group._passenger_list)
         down = sum(i < floor for i in group._passenger_list)
