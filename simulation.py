@@ -314,6 +314,11 @@ class Simulation:
             else:
                 raise err
         self.elevator_max_people = env.elevator_max
+        
+        self._ele_num_ctrl.changeable = env.ui_change_elevator_num
+        self._ele_max_people.changeable = env.ui_change_elevator_max
+        self._flo_num_ctrl.changeable = env.ui_change_floor_num
+        
         self.flush_env_info_list()
 
     def open_strategy_file(self, path):

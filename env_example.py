@@ -64,6 +64,11 @@ elevator_speed float  电梯运行时间（秒/层）    1     0 <= x < 60
 reflash_time   float  刷新时间              0.1     0.01 <= x < 10
 groups         dict   乘客组列表，不建议碰    {}     {str: <passengers object>}
 pass_floor     dict   每层的乘客组           {}     {int: str}
+
+UI 设置
+ui_change_floor_num    -> bool  default: True;  图形界面可修改楼层数
+ui_change_elevator_num -> bool  default: True;  图形界面可修改电梯数
+ui_change_elevator_max -> bool  default: True;  图形界面可修改电梯最大载客数
     '''
 
     def __init__(self):
@@ -74,6 +79,9 @@ pass_floor     dict   每层的乘客组           {}     {int: str}
         self.reflash_time = 0.1
         self.groups = {"nobody": Passengers("nobody")}
         self.pass_floor = {}
+        self.ui_change_floor_num = True
+        self.ui_change_elevator_num = True
+        self.ui_change_elevator_max = True
 
     def add_group(self, obj):
         "将此乘客组登记到接口列表上。"
@@ -94,6 +102,7 @@ env.elevators = 4
 env.reflash_time = 0.3
 env.add_group(Passengers("平铺", range(1, floors + 1)))
 env.add_group(random_passenger("全楼层随机", (30, 50), floors, [], None, None))
+env.ui_change_floor_num = False
 # 指明每层楼的乘客组
 for floor in range(1, 11):
     env.pass_floor[floor] = "全楼层随机"

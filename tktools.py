@@ -5,14 +5,15 @@ Created on Sun Nov 14 23:42:06 2021
 
 @author: Juntong.Zhu21
 """
-import tkinter as tk, os
+import tkinter as tk
 import tkinter.messagebox
 import tkinter.simpledialog
 import tkinter.filedialog
+import os, itertools
 
 
 class TextNumPanedWindow(tk.PanedWindow):
-    def __init__(self, master, text, num=None, num_range=(0, 200), isint=False,
+    def __init__(self, master, text, num=None, num_range=(0, 200), isint=False, changeable=True,
                  **kw):
         "数值范围为左闭右开区间"
         d = {"orient": "horizontal"}
@@ -29,6 +30,8 @@ class TextNumPanedWindow(tk.PanedWindow):
             raise ValueError("num out of range!")
         self.add(self.left_text, minsize=self.left_text.winfo_reqwidth() // 2)
         self.add(self.right_num, minsize=self.right_num.winfo_reqwidth() // 2)
+        
+        self.changeable = changeable
 
     def num_input_cmd(self):
         text = "请输入数字，范围 [{}, {})".format(*self.num_range)
@@ -53,6 +56,16 @@ class TextNumPanedWindow(tk.PanedWindow):
             return 2
         self.right_num["text"] = str(num)
         self.number = num
+    @property
+    def changeable(self):
+        return self.right_num.cget("state") == "normal"
+    @changeable.setter
+    def changeable(self, value):
+        value = bool(value)
+        if self.changeable == value:
+            return
+        state = "normal" if value else "disable"
+        self.right_num.config(state = state)
 
 
 class NumButton(tk.Button):
@@ -127,6 +140,8 @@ class FileButton(tk.Button):
 
 
 class Switch(tk.Button):
+    '''继承自 tkinter 的按钮，自带command可在a、b两个状态切换。
+属性 state : bool , False if switch in state a, True in state b.'''
     def __init__(self, master, text, text_b, bg, bg_b, **kw):
         d = {"command": self.click}
         d.update(kw)
@@ -151,3 +166,23 @@ class Switch(tk.Button):
             return
         else:
             self.click()
+
+
+class ChangeButton(tk.Button):
+    """类似上面定义的`Switch`, 该类型可以在数个状态间切换。
+    ls 应为可迭代对象, 其元素为该状态时按钮的配置。
+    若 add_index 为 True, 则会利用 `enumerate` 为 ls各个元素添加索引, 供改变状态时
+刷新 index 属性。"""
+    def __init__(self, master, ls, init_config=None, add_index=True):
+        if add_index:
+            ls = enumerate(ls)
+        self.lsconfig = itertools.cycle(ls)
+        if not init_config:
+            init_config = {}
+        init_cfg = {"command": self.next_update}
+        init_cfg.update(init_config)
+        super().__init__(master, **init_cfg)
+        self.next_update()
+    def next_update(self):
+        self.index, kw = next(self.lsconfig)
+        self.config(**kw)
