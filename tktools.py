@@ -140,8 +140,8 @@ class FileButton(tk.Button):
 
 
 class Switch(tk.Button):
-    '''继承自 tkinter 的按钮，自带command可在a、b两个状态切换。
-属性 state : bool , False if switch in state a, True in state b.'''
+    """继承自 tkinter 的按钮，自带command可在a、b两个状态切换。
+属性 state : bool , False if switch in state a, True in state b."""
     def __init__(self, master, text, text_b, bg, bg_b, **kw):
         d = {"command": self.click}
         d.update(kw)

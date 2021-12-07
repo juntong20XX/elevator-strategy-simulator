@@ -470,9 +470,11 @@ class Simulation:
                 raise err
 
     def _closing(self):
-        "主窗口被关闭时执行的函数"
-        self._env_run_cmd()
+        """主窗口被关闭时执行的函数"""
+        if self._env_run_btn.to_state(False):
+            self.thread.join()
         self._window.destroy()
+        
 
 
 class Pass:
@@ -637,7 +639,7 @@ class Elevator:
         show_frame.pack(fill="x", side="top", pady=5)
         top_frame.pack(fill="x", side="top")
         self.user_label.pack(fill="both", side="top")
-        # self.passenger_frame.pack(side="bottom", fill="y")
+        self.passenger_frame.pack(side="bottom", fill="y")
 
     @property
     def moving_direction(self):
@@ -685,8 +687,6 @@ class Elevator:
 class Worker:
     def __init__(self, simu: Simulation):
         self.simu = simu
-
-        self.sta = 0
 
     def __enter__(self):
         self.simu.isRunning = True
