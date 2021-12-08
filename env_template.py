@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 class Passengers(locals()["Pass"]):
-    '''建立乘客组对象。
-passenger_list: interable  元素类型为 int ，代表一名去对应楼层的乘客
+    """建立乘客组对象。
+passenger_list: iterable  元素类型为 int ，代表一名去对应楼层的乘客
 
 可继承该对象，添加方法以调用的接口：
 func call_loop() #每个周期调用一次，注意控制运算时间。
@@ -12,7 +12,7 @@ func call_elevators_stop(elevator_info:list) #当有电梯到达目标楼层时�
            该电梯上一个停靠楼层:int,
            电梯内每个乘客目标楼层:tuple
            ), ...]
-    '''
+    """
 
     def __init__(self, name, passenger_list=None):
         super().__init__(name, passenger_list)
@@ -39,7 +39,7 @@ func call_elevators_stop(elevator_info:list) #当有电梯到达目标楼层时�
 
 
 class random_passenger(locals()["RP"]):
-    '''随机乘客生成器，在应用时调用时会生成Passengers对象。
+    """随机乘客生成器，在应用时调用时会生成Passengers对象。
 支持所有Passengers功能以及功能重写。
 passenger_number: int/tuple  生成乘客总数，如果未指定整数，则应指定范围（闭区间）
 hi              : int        楼层最高值，可填入楼层数
@@ -51,7 +51,7 @@ go_down_number  : int/None   生成向下乘客的人数，处在1层时自动�
 如果输入有误可能遇到一些问题：
  - "avoid_floors"包含了全部楼层生成选择， 会导致**死循环**
  - "go_up_number"和"go_down_number"均被指定时会导致"passenger_number"失效
-    '''
+    """
 
     def __init__(self, name, passenger_number, hi, avoid_floors=None,
                  go_up_number=None, go_down_number=None):
@@ -59,7 +59,7 @@ go_down_number  : int/None   生成向下乘客的人数，处在1层时自动�
 
 
 class Environment(locals()["Environment"]):
-    '''将环境配置填写在实例化的`env`中。
+    """将环境配置填写在实例化的`env`中。
 名称           类型    含义                默认值    范围
 =====          =====  =====               ====     ====
 floors         int    总楼层数               10     1 <= x <= 999
@@ -74,7 +74,7 @@ UI 设置
 ui_change_floor_num    -> bool  default: True;  图形界面可修改楼层数
 ui_change_elevator_num -> bool  default: True;  图形界面可修改电梯数
 ui_change_elevator_max -> bool  default: True;  图形界面可修改电梯最大载客数
-    '''
+    """
 
     def __init__(self):
         self.floors = 10

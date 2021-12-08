@@ -58,7 +58,7 @@ class Simulation:
         # ---- init variates ----
         # `reflash_time`,`elevator_num`,`floor_level_num`
         # `environment_filepath` and `strategy_filepath`
-        # all setted before
+        # all set before
         self.passengers_groups = {}  # 当载入文件时被填充，表示所有乘客组
         self.floor_passengers = {}  # 当载入文件时被填充，记录每层应用的乘客组
         self.elevators = []  # 当载入文件时被填充，记录每个电梯对象
@@ -314,11 +314,11 @@ class Simulation:
             else:
                 raise err
         self.elevator_max_people = env.elevator_max
-        
+
         self._ele_num_ctrl.changeable = env.ui_change_elevator_num
         self._ele_max_people.changeable = env.ui_change_elevator_max
         self._flo_num_ctrl.changeable = env.ui_change_floor_num
-        
+
         self.flush_env_info_list()
 
     def open_strategy_file(self, path):
@@ -474,15 +474,14 @@ class Simulation:
         if self._env_run_btn.to_state(False):
             self.thread.join()
         self._window.destroy()
-        
 
 
 class Pass:
-    '''建立乘客组对象。
+    """建立乘客组对象。
     _passenger_list 存储每个想去的楼层，不要乱动！
     当组被修改时， changed会被设置为 True
     进程不安全！要么给我单线程读写，要么自己加锁去（但changed可能用不到）。
-    '''
+    """
 
     def __init__(self, name, passenger_list=None):
         self.name = name
@@ -490,6 +489,7 @@ class Pass:
         if passenger_list:
             self._passenger_list.extend(passenger_list)
         self.changed = None
+        self.my_floor = -1  # 这个属性在`get_start`后被填充
 
     def get_list(self):
         self.changed = False
@@ -776,9 +776,10 @@ class Worker:
         return rst
 
     def get_kargs(self):
+        """生成传递给策略函数的 info 字典中的基本元素"""
         return {"passenger": {k: v.get_list()
                               for k, v in self.simu.floor_passengers.items()},
-                "elevator": [(e.at_floor, e.floor_to, e.moving_direction)
+                "elevator": [(e.at_floor, e.floor_to, e.moving_direction, self.simu.elevator_max_people)
                              for e in self.simu.elevators]}
 
     def read_message(self, msg, this_loop_time):
@@ -802,8 +803,8 @@ class Worker:
             at = e.at_floor
             pop = [i for i in self.simu.floor_passengers[at].get_list()
                    if (i - at) * d > 0]
-            max_abord = self.simu.elevator_max_people - len(e.inside_people)
-            k = min(len(pop), max_abord)
+            max_aboard = self.simu.elevator_max_people - len(e.inside_people)
+            k = min(len(pop), max_aboard)
             passengers = random.sample(pop, k)
             e.inside_people.extend(passengers)
             for p in passengers:
@@ -820,8 +821,8 @@ class Worker:
             at = e.at_floor
             pop = [i for i in self.simu.floor_passengers[at].get_list()
                    if (i - at) * d > 0]
-            max_abord = self.simu.elevator_max_people - len(e.inside_people)
-            k = min(len(pop), max_abord)
+            max_aboard = self.simu.elevator_max_people - len(e.inside_people)
+            k = min(len(pop), max_aboard)
             passengers = random.sample(pop, k)
             e.inside_people.extend(passengers)
             for p in passengers:
@@ -842,7 +843,7 @@ class Worker:
             return {"say": "success", "return": None,
                     "last command": msg}
         else:
-            return {"say": "error", "error": "unknow command",
+            return {"say": "error", "error": "unknown command",
                     "last command": msg}
 
 
