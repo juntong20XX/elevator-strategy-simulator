@@ -9,7 +9,7 @@ Created on Sun Nov 14 22:32:30 2021
 保存环境时不仅会覆盖文件，乘客组也无法保存。
 """
 import tkinter as tk, tkinter.messagebox, os, random, functools, time, sys
-from copy import copy
+from copy import deepcopy
 from threading import Thread
 
 from tktools import TextNumPanedWindow, NumButton, FileButton, Switch
@@ -496,7 +496,7 @@ class Pass:
         return tuple(self._passenger_list)
 
     def get_start(self, my_floor):
-        ret = copy(self)
+        ret = deepcopy(self)
         ret.my_floor = my_floor
         while 1:
             try:
@@ -594,7 +594,7 @@ go_down_number  : int/None   生成向下乘客的人数
             for _ in range(go_up_number):
                 add_one_number(my_floor + 1, hi)
 
-        ret = copy(self)
+        ret = deepcopy(self)
         ret._passenger_list = ls
         ret.my_floor = my_floor
         return ret
