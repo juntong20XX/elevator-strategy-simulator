@@ -148,8 +148,7 @@ info["error"] -> "unknown command"
 
         down = self.get_down_floors(info["passenger"])
         up = self.get_up_floors(info["passenger"])
-        req = set(down + up)
-        if not req:
+        if not (up or down):
             # 如果没有请求，则终止
             return
 
@@ -169,12 +168,10 @@ info["error"] -> "unknown command"
                 assert info["say"] == "success"
                 down = next(open_and_down)
                 free_elevators.pop(i)
-        # 结束检查电梯停留层的需求
-        if not free_elevators:
-            return
+        req = set(up + down)  # req是乘梯需求
 
         # 响应请求
-        while 1:
+        while req and free_elevators:  # 条件是有乘梯需求且有空电梯
             goto = max(req)  # 前往最高请求楼层
             elevator_num = self.get_nearest_elevator(goto, free_elevators)
             at = free_elevators.pop(elevator_num)[0]  # 这里从free_elevators中删去了已选中的电梯
@@ -185,9 +182,6 @@ info["error"] -> "unknown command"
                     goto = min(up_passed)
             info = yield cmds.elevator_to(elevator_num, goto)
             assert info["say"] == "success"
-            # 结束循环条件
-            if not free_elevators:
-                return
             # 刷新数据
             up = self.get_up_floors(info["passenger"])
             if goto in up:
