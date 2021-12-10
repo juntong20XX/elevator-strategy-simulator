@@ -31,7 +31,7 @@ class TextNumPanedWindow(tk.PanedWindow):
         self.add(self.left_text, minsize=self.left_text.winfo_reqwidth() // 2)
         self.add(self.right_num, minsize=self.right_num.winfo_reqwidth() // 2)
         
-        self.changeable = changeable
+        self.changeable = changeable  # 这里其实调用了方法
 
     def num_input_cmd(self):
         text = "请输入数字，范围 [{}, {})".format(*self.num_range)

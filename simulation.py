@@ -30,30 +30,30 @@ class Simulation:
             pass
         else:
             windll.shcore.SetProcessDpiAwareness(1)
-            ScaleFactor = windll.shcore.GetScaleFactorForDevice(0)
-            self._window.tk.call('tk', 'scaling', ScaleFactor / 75)
+            scale_factor = windll.shcore.GetScaleFactorForDevice(0)
+            self._window.tk.call('tk', 'scaling', scale_factor / 75)
         self._window.protocol("WM_DELETE_WINDOW", self._closing)
-        mainwindow = tk.PanedWindow(self._window,
-                                    orient="horizontal",
-                                    sashrelief="solid")
-        ctrlwindow = tk.PanedWindow(mainwindow,
+        main_window = tk.PanedWindow(self._window,
+                                     orient="horizontal",
+                                     sashrelief="solid")
+        ctrlwindow = tk.PanedWindow(main_window,
                                     orient="vertical",
                                     sashrelief="solid")
         self._envctrl_frame = tk.Frame(ctrlwindow)
         self._strategy_frame = tk.Frame(ctrlwindow)
-        self._happend_frame = tk.Frame(mainwindow)
+        self._state_frame = tk.Frame(main_window)
 
-        mainwindow.pack(fill="both", expand=1)
+        main_window.pack(fill="both", expand=1)
         ctrlwindow.pack(fill="both", expand=1)
 
-        mainwindow.add(ctrlwindow)
-        mainwindow.add(self._happend_frame)
+        main_window.add(ctrlwindow)
+        main_window.add(self._state_frame)
         ctrlwindow.add(self._envctrl_frame, minsize=10)
         ctrlwindow.add(self._strategy_frame, minsize=10)
 
         self._init_envctrl_frame()
         self._init_strategy_frame()
-        self._init_happend_frame()
+        self._init_state_frame()
 
         # ---- init variates ----
         # `reflash_time`,`elevator_num`,`floor_level_num`
@@ -65,9 +65,18 @@ class Simulation:
         self.isRunning = False  # 后台工作进程是否在运行
         self.worker = Worker(self)  # 后台工作进程函数所在对象
         self.Strategy = None  # 当载入文件时加载，策略方法
+        self._env_show_texts = {}  # 各楼层显示列表的文字缓存，由“flush_env_info_list”维护
+        self.ui_lock_floor_num = False  # 锁定楼层数
+        self.ui_lock_elevator_num = False  # 锁定电梯数量
+        self.ui_lock_elevator_max_people = False  # 锁定电梯最大人数
+        self.runningUI = False  # 是否在运行UI
 
     def mainloop(self):
-        self._window.mainloop()
+        self.runningUI = True
+        try:
+            self._window.mainloop()
+        finally:
+            self.runningUI = False
 
     def __getattr__(self, name):
         if not name.startswith("_"):
@@ -105,11 +114,15 @@ class Simulation:
         self._ele_num_ctrl = TextNumPanedWindow(devices_ctrl, "电梯数", 1,
                                                 (1, 31), True)
         self._ele_num_ctrl.right_num["command"] = self._ele_num_ctrl_cmd
+        ele_reload = tk.Button(devices_ctrl, text="重载", command=self.reload_elevators)
         self._flo_num_ctrl = TextNumPanedWindow(devices_ctrl, "楼层数", 10,
                                                 (1, 1000), True)
         self._flo_num_ctrl.right_num["command"] = self._flo_num_ctrl_cmd
-        self._ele_num_ctrl.grid(column=0, row=0, pady=2, sticky="we")
-        self._flo_num_ctrl.grid(column=0, row=1, pady=2, sticky="we")
+        floor_reload = tk.Button(devices_ctrl, text="重载", command=self.reload_floors)
+        self._ele_num_ctrl.grid(column=0, row=0, sticky="we")
+        ele_reload.grid(column=1, row=0, pady=1, sticky="we")
+        self._flo_num_ctrl.grid(column=0, row=1, pady=1, sticky="we")
+        floor_reload.grid(column=1, row=1, sticky="we")
         elevator_info = tk.Frame(main_frame)
         tk.Label(elevator_info, text="电梯运行速度").grid(
             column=0, row=0, columnspan=2, sticky="we")
@@ -152,10 +165,10 @@ class Simulation:
         main_frame.add(ctrl_frame)
         main_frame.add(show_frame)
 
-    def _init_happend_frame(self):
-        tk.Label(self._happend_frame, text="电梯状态显示器",
+    def _init_state_frame(self):
+        tk.Label(self._state_frame, text="电梯状态显示器",
                  relief="groove").pack(fill="x", side="top")
-        self._elevator_list = tk.PanedWindow(self._happend_frame,
+        self._elevator_list = tk.PanedWindow(self._state_frame,
                                              orient="horizontal",
                                              sashrelief="raised")
         self._elevator_list.pack(fill="both", side="bottom", expand=1)
@@ -190,12 +203,8 @@ class Simulation:
                 obj = self.elevators.pop()
                 self._elevator_list.remove(obj.frame)
         # 修改每个电梯UI的空间
-        self._elevator_list.update()
-        fill = self._elevator_list.winfo_width()
-        sub = (fill - 1) // value
-        for i in range(value - 2, -1, -1):
-            fill -= sub
-            self._elevator_list.sash_place(i, fill, 1)
+        if self.runningUI:
+            self._allocate_ui_ele_space()
 
     @property
     def elevator_max_people(self):
@@ -215,19 +224,7 @@ class Simulation:
     def floor_level_num(self, value):
         if self._flo_num_ctrl.change_num(value):
             raise ValueError
-        self.floor_passengers.clear()
-        for i in range(1, value + 1):
-            try:
-                name = self.get_passenger_group_at_floor(i)
-            except Exception as err:
-                if type(err) is Exception and \
-                        err.args == ("该方法会在加载文件后被赋值",):
-                    return
-                else:
-                    raise err
-            else:
-                obj = self.passengers_groups[name]
-                self.floor_passengers[i] = obj.get_start(i)
+        self.reload_floors()
 
     @property
     def environment_filepath(self):
@@ -252,6 +249,36 @@ class Simulation:
         if self._ele_speed_ctrl.change_num(value):
             raise ValueError("电梯速度范围错误，应属于 %s<= x < %s"
                              % self._ele_speed_ctrl.num_range)
+
+    def reload_elevators(self):
+        """根据按钮设置的电梯数量重新加载电梯。该方法不会运行环境文件。"""
+        while self.elevators:  # 先清空列表
+            obj = self.elevators.pop()
+            self._elevator_list.remove(obj.frame)
+        for num in range(self.elevator_num):  # 添加电梯对象
+            ele = Elevator(self._elevator_list, num + 1)
+            self.elevators.append(ele)
+            self._elevator_list.add(ele.frame)
+        if self.runningUI:  # 修改每个电梯UI的空间
+            self._allocate_ui_ele_space()
+
+    def reload_floors(self):
+        """重新加载楼层和乘客。"""
+        self.floor_passengers.clear()
+        for i in range(1, self.floor_level_num + 1):
+            try:
+                name = self.get_passenger_group_at_floor(i)
+            except Exception as err:
+                if type(err) is Exception and \
+                        err.args == ("该方法会在加载文件后被赋值",):
+                    return
+                else:
+                    raise err
+            else:
+                obj = self.passengers_groups[name]
+                self.floor_passengers[i] = obj.get_start(i)
+        if self.runningUI:
+            self.flush_env_info_list()
 
     def open_environment_file(self, path):
         """打开环境配置文件， 但不会记录路径。
@@ -316,10 +343,25 @@ class Simulation:
         self.elevator_max_people = env.elevator_max
 
         self._ele_num_ctrl.changeable = env.ui_change_elevator_num
+        self.ui_lock_elevator_num = not env.ui_change_elevator_num
         self._ele_max_people.changeable = env.ui_change_elevator_max
+        self.ui_lock_elevator_max_people = not env.ui_change_elevator_max
         self._flo_num_ctrl.changeable = env.ui_change_floor_num
+        self.ui_lock_floor_num = not env.ui_change_floor_num
 
+        # 刷新显示文本
+        self._env_show_texts.clear()  # 清空文字存档
+        self._env_info_list.delete(0, "end")
         self.flush_env_info_list()
+
+    def _allocate_ui_ele_space(self):
+        """自动分配电梯展示面板上每个电梯的空间"""
+        self._elevator_list.update()
+        fill = self._elevator_list.winfo_width()
+        sub = (fill - 1) // self.elevator_num
+        for i in range(self.elevator_num - 2, -1, -1):
+            fill -= sub
+            self._elevator_list.sash_place(i, fill, 1)
 
     def open_strategy_file(self, path):
         """打开策略文件。
@@ -337,13 +379,18 @@ class Simulation:
         raise Exception("该方法会在加载文件后被赋值")
 
     def flush_env_info_list(self):
-        "填充每层乘客信息表"
-        self._env_info_list.delete(0, "end")
+        """填充每层乘客信息表"""
         for floor in range(1, self.floor_level_num + 1):
             text = self._get_env_info_text(floor)
-            self._env_info_list.insert("end", text)
+            if self._env_show_texts.get(floor) == text:
+                continue
+            else:
+                self._env_show_texts[floor] = text
+                self._env_info_list.delete(floor - 1)
+                self._env_info_list.insert(floor - 1, text)
 
     def _get_env_info_text(self, floor):
+        """生成对应层在展示板的文字。"""
         group = self.floor_passengers.get(floor,
                                           self.passengers_groups["nobody"])
         text = f"F{floor}".ljust(5)
@@ -351,7 +398,7 @@ class Simulation:
         down = sum(i < floor for i in group._passenger_list)
         text += f"{up}↑".ljust(4) + f" {down}↓".ljust(7)
 
-        num = sum(el.floor_to == floor for el in self.elevators)
+        num = sum(el.floor_to == floor for el in self.elevators)  # FIXME: 前往数量不对
         text += f"{num} 前往".rjust(5)
         return text
 
@@ -394,10 +441,21 @@ class Simulation:
         """控制模拟器执行状态时调用的函数。"""
         self._env_run_btn.click()
         if self._env_run_btn.state:
+
+            self._ele_max_people.changeable = False
+            self._flo_num_ctrl.changeable = False
+            self._ele_num_ctrl.changeable = False
+
             self.thread = Thread(target=self.worker.callme, daemon=True)
             self.thread.start()
         else:
             self.thread.join()
+            if not self.ui_lock_floor_num:
+                self._flo_num_ctrl.changeable = True
+            if not self.ui_lock_elevator_num:
+                self._ele_num_ctrl.changeable = True
+            if not self.ui_lock_elevator_max_people:
+                self._ele_max_people.changeable = True
 
     def _save_env_cmd(self):
         '保存编辑的环境时调用的函数。'
@@ -629,8 +687,10 @@ class Elevator:
         tk.Label(show_frame, text="目标楼层").grid(column=0, row=1)
         self.label_to_floor = tk.Label(show_frame, text="None", width=5)
         self.label_to_floor.grid(column=1, row=1, sticky="w")
-        self.label_moving_direction = tk.Label(show_frame, width="4", bg="white")
+        self.label_moving_direction = tk.Label(show_frame, width=4, bg="white")
         self.label_moving_direction.grid(column=2, row=0, rowspan=2, sticky="nes")
+        self.label_passenger_number = tk.Label(show_frame)
+        self.label_passenger_number.grid(column=3, row=0, rowspan=2, sticky="nes", padx=8)
         self.user_label = tk.Label(self.frame)
         self.passenger_frame = tk.Frame(self.frame)
         self.floor_labels = []
@@ -672,8 +732,8 @@ class Elevator:
         else:
             text = ""
         self.label_moving_direction["text"] = text
-
-        for l in self.floor_labels:
+        # 显示电梯内要前往的楼层楼层
+        for l in self.floor_labels:  # XXX: 更智能刷新楼层显示
             l.pack_forget()
         self.floor_labels.clear()
         passengers = sorted(set(self.inside_people))
@@ -682,6 +742,9 @@ class Elevator:
                          text=str(num).rjust(4))
             l.pack(fill="x", padx=2, pady=2)
             self.floor_labels.append(l)
+        # 显示电梯内的人数
+        n = len(self.inside_people)
+        self.label_passenger_number["text"] = f"梯内\n%d人" % n
 
 
 class Worker:
