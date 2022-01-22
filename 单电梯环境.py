@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import random
+
 class Passengers(locals()["Pass"]):
     """建立乘客组对象。
 passenger_list: iterable  元素类型为 int ，代表一名去对应楼层的乘客
@@ -74,22 +76,19 @@ UI 设置
 ui_change_floor_num    -> bool  default: True;  图形界面可修改楼层数
 ui_change_elevator_num -> bool  default: True;  图形界面可修改电梯数
 ui_change_elevator_max -> bool  default: True;  图形界面可修改电梯最大载客数
-
-动态选项
-def environment_update(self, ...)  # 模拟器会保存该方法，可供运行时调用，UI暂不支持
     """
 
     def __init__(self):
-        self.floors = 10
+        self.floors = 5
         self.elevators = 1
         self.elevator_speed = 1
         self.elevator_max = 10
-        self.reflash_time = 0.1
+        self.reflash_time = 0.3
         self.groups = {"nobody": Passengers("nobody")}
         self.pass_floor = {}
-        self.ui_change_floor_num = True
-        self.ui_change_elevator_num = True
-        self.ui_change_elevator_max = True
+        self.ui_change_floor_num = False
+        self.ui_change_elevator_num = False
+        self.ui_change_elevator_max = False
 
     def add_group(self, obj):
         "将此乘客组登记到接口列表上。"
@@ -102,4 +101,31 @@ def environment_update(self, ...)  # 模拟器会保存该方法，可供运行�
         return self.pass_floor.get(floor, "nobody")
 
 
+class GrowingPassengers(random_passenger):
+    def __new__(cls, name, start_number, growth_probability):
+        """
+        start_number -> int 开始时成员的数量
+        growth_probability -> float 0 <= f <= 1"""
+        ret = super().__new__(cls, name, start_number, env.floors)
+        ret.name = name
+        ret.start_number = start_number
+        ret.growth_probability = growth_probability
+        return ret
+
+    def call_loop(self):
+        if random.random() < self.growth_probability:
+            while 1:
+                to = random.randint(1, env.floors)
+                if to != self.my_floor:
+                    break
+            print("Floor", self.my_floor, ": add a passenger goto", to)
+            self.add_a_passenger(to)
+
+
 env = Environment()  # 这个是唯一被检索的入口变量。
+
+env.add_group(GrowingPassengers("一楼", 2, 0.2))
+env.add_group(GrowingPassengers("非一楼", 2, 0.1))
+env.pass_floor[1] = "一楼"
+for i in range(2, env.floors+1):
+    env.pass_floor[i] = "非一楼"

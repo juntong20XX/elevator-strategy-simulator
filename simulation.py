@@ -65,11 +65,13 @@ class Simulation:
         self.isRunning = False  # 后台工作进程是否在运行
         self.worker = Worker(self)  # 后台工作进程函数所在对象
         self.Strategy = None  # 当载入文件时加载，策略方法
+        self.environment_update = None  # 当载入文件时加载，用于用户在运行时更新环境
         self._env_show_texts = {}  # 各楼层显示列表的文字缓存，由“flush_env_info_list”维护
         self.ui_lock_floor_num = False  # 锁定楼层数
         self.ui_lock_elevator_num = False  # 锁定电梯数量
         self.ui_lock_elevator_max_people = False  # 锁定电梯最大人数
         self.runningUI = False  # 是否在运行UI
+        self.thread = None  # 工作进程
 
     def mainloop(self):
         self.runningUI = True
@@ -341,6 +343,7 @@ class Simulation:
             else:
                 raise err
         self.elevator_max_people = env.elevator_max
+        self.environment_update = env.environment_update
 
         self._ele_num_ctrl.changeable = env.ui_change_elevator_num
         self.ui_lock_elevator_num = not env.ui_change_elevator_num
@@ -456,6 +459,26 @@ class Simulation:
                 self._ele_num_ctrl.changeable = True
             if not self.ui_lock_elevator_max_people:
                 self._ele_max_people.changeable = True
+
+    def get_env_running_iter(self):
+        """此方法为api，为非图形界面情况设计。
+返回一个迭代器。执行迭代器会刷新一次模拟环境，并返回当前模拟环境的周期。"""
+        loop_time = time.time()
+        while 1:
+            self.worker.loop(loop_time)
+            add = yield loop_time
+            if add is None:
+                loop_time = time.time()
+            else:
+                loop_time += add
+
+    def get_elevator_label_config(self, option, elevator_index=None):
+        """为非gui情况服务。
+elevator_index为None时返回列表，其元素对应所有电梯相应的属性。"""
+        if elevator_index is None:
+            return [ele.user_label[option] for ele in self.elevators]
+        else:
+            return self.elevators[elevator_index].user_label[option]
 
     def _save_env_cmd(self):
         '保存编辑的环境时调用的函数。'
@@ -603,7 +626,8 @@ go_down_number  : int/None   生成向下乘客的人数
         loc = {"get_start": func}
         for name in ("add_a_passenger", "add_passengers",
                      "call_loop", "call_elevators_stop"):
-            if hasattr(cls, name): loc[name] = getattr(cls, name)
+            if hasattr(cls, name):
+                loc[name] = getattr(cls, name)
         cl = type("RandomPassengers", (Pass,), loc)
         ret = cl(class_name)
         return ret
@@ -661,6 +685,9 @@ go_down_number  : int/None   生成向下乘客的人数
 class Env:
     """给环境文件用于继承。但说它就是传值用的……可能之后重载`__format__`吧？
     """
+    def environment_update(self, *args, **kargs):
+        """这货是用户自定义动态更新环境的。"""
+        raise Exception("需要自定义。")
 
 
 class Elevator:
@@ -691,7 +718,7 @@ class Elevator:
         self.label_moving_direction.grid(column=2, row=0, rowspan=2, sticky="nes")
         self.label_passenger_number = tk.Label(show_frame)
         self.label_passenger_number.grid(column=3, row=0, rowspan=2, sticky="nes", padx=8)
-        self.user_label = tk.Label(self.frame)
+        self.user_label = tk.Label(self.frame, font=("Courier", 12))
         self.passenger_frame = tk.Frame(self.frame)
         self.floor_labels = []
 
@@ -744,7 +771,7 @@ class Elevator:
             self.floor_labels.append(l)
         # 显示电梯内的人数
         n = len(self.inside_people)
-        self.label_passenger_number["text"] = f"梯内\n%d人" % n
+        self.label_passenger_number["text"] = "梯内\n%d人" % n
 
 
 class Worker:
@@ -756,6 +783,8 @@ class Worker:
 
     def __exit__(self, *args):
         self.simu.isRunning = False
+        if not self.simu.runningUI:
+            return
         if self.simu._env_run_btn.state is True:  # 说明并不是因为按钮而结束程序的
             tk.messagebox.showerror("错误", "工作线程意外结束\n%s\n%s\n%s" % args)
         self.simu._env_run_btn.to_state(False)
@@ -784,10 +813,11 @@ class Worker:
         - 根据接口动态更新人数方案 (call_loop & call_elevators_stop)
         - 修改进程状态指 (isRunning)
         - 电梯运行速度 (elevator_speed)'''
-        if not self.simu._env_run_btn.state:
-            sys.exit()
-        if any(i.changed for i in self.simu.floor_passengers.values()):
-            self.simu.flush_env_info_list()
+        if self.simu.runningUI:
+            if not self.simu._env_run_btn.state:
+                sys.exit()
+            if any(i.changed for i in self.simu.floor_passengers.values()):
+                self.simu.flush_env_info_list()
         elevator_stopped = self.flush_elevators(this_loop_time)
 
         # run 决策文件
@@ -829,7 +859,8 @@ class Worker:
                 e.start = this_loop_time
                 if e.moving_direction:
                     # 说明电梯未到达目标
-                    e.flush_ui()
+                    if self.simu.runningUI:
+                        e.flush_ui()
                     continue
                 # --到达目标楼层的电梯才执行--
                 e.floor_to = None
@@ -910,8 +941,10 @@ class Worker:
                     "last command": msg}
 
 
-sln = Simulation()
+if __name__ == "__main__":
 
-sln.mainloop()
-
-sys.exit()
+    sln = Simulation()
+    
+    sln.mainloop()
+    
+    sys.exit()
