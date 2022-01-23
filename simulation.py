@@ -83,6 +83,10 @@ class Simulation:
     def __getattr__(self, name):
         if not name.startswith("_"):
             return getattr(self, f"_{name}")
+    
+    def __del__(self):
+        del self.thread  # 第三方调用时可能无法关闭子线程
+        super().__del__()
 
     def _init_envctrl_frame(self):
         tk.Label(self._envctrl_frame,
@@ -460,17 +464,20 @@ class Simulation:
             if not self.ui_lock_elevator_max_people:
                 self._ele_max_people.changeable = True
 
-    def get_env_running_iter(self):
+    def get_env_running_generator(self):
         """此方法为api，为非图形界面情况设计。
-返回一个迭代器。执行迭代器会刷新一次模拟环境，并返回当前模拟环境的周期。"""
+返回一个迭代器。执行迭代器会刷新一次模拟环境，并返回当前模拟环境的周期。
+迭代器传入值若为None，则环境使用真实时间；非None则使用原模拟环境时间+传入值。
+每次迭代的返回值为模拟环境时间。"""
         loop_time = time.time()
-        while 1:
-            self.worker.loop(loop_time)
-            add = yield loop_time
-            if add is None:
-                loop_time = time.time()
-            else:
-                loop_time += add
+        with self.worker:
+            while 1:
+                self.worker.loop(loop_time)
+                add = yield loop_time
+                if add is None:
+                    loop_time = time.time()
+                else:
+                    loop_time += add
 
     def get_elevator_label_config(self, option, elevator_index=None):
         """为非gui情况服务。
